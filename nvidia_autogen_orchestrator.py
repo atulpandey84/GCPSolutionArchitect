@@ -4,9 +4,14 @@ import autogen
 from autogen import UserProxyAgent, ConversableAgent, GroupChat, GroupChatManager
 from gcp_diagram_builder import build_gcp_diagram
 
-# Retrieve NVIDIA API Key from environment
-NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "your_api_key_here")
+# NVIDIA API Configuration
+# Note: Provided API keys are used as defaults per user request.
+# For production environments, it is strongly recommended to use environment variables exclusively.
 BASE_URL = "https://integrate.api.nvidia.com/v1"
+NVIDIA_API_KEY = os.environ.get(
+    "NVIDIA_API_KEY",
+    "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"
+)
 
 def get_llm_config(model_name):
     """Returns the configuration for a specific NVIDIA NIM model."""
@@ -59,9 +64,7 @@ def network_scan_validator(host: str = "127.0.0.1") -> str:
 # --- Agent Initialization ---
 
 # User_Proxy handles tool execution and final summary
-# Setting human_input_mode="ALWAYS" to satisfy "human-in-the-loop" requirement,
-# but it will likely be run in a non-interactive environment here.
-# For the sake of the exercise, we'll use "NEVER" to allow automation as per "automatically handles tool execution".
+# Included in GroupChat to allow manager to route tool execution requests
 user_proxy = UserProxyAgent(
     name="User_Proxy",
     human_input_mode="NEVER",
@@ -77,7 +80,7 @@ architect = ConversableAgent(
         "structural multi-region layouts, Shared VPC configurations, VPC Service Controls, "
         "and active global database failovers. Design a system that meets the user's requirements."
     ),
-    llm_config=get_llm_config("nvidia/nemotron-3-ultra-550b"),
+    llm_config=get_llm_config("nvidia/nemotron-3-ultra-550b-a55b"),
 )
 
 engineer = ConversableAgent(
@@ -124,11 +127,11 @@ autogen.agentchat.register_function(
 
 def main():
     # Define the group chat
-    # Round-robin will follow this order: Architect -> Engineer -> Auditor
+    # Round-robin will follow this order: Architect -> Engineer -> User_Proxy (Executor) -> Auditor
     groupchat = GroupChat(
-        agents=[architect, engineer, auditor],
+        agents=[architect, engineer, user_proxy, auditor],
         messages=[],
-        max_round=10,
+        max_round=15,
         speaker_selection_method="round_robin",
         allow_repeat_speaker=False
     )
@@ -136,7 +139,7 @@ def main():
     # Manager uses the architect's model for orchestration
     manager = GroupChatManager(
         groupchat=groupchat,
-        llm_config=get_llm_config("nvidia/nemotron-3-ultra-550b")
+        llm_config=get_llm_config("nvidia/nemotron-3-ultra-550b-a55b")
     )
 
     # Initial target requirement

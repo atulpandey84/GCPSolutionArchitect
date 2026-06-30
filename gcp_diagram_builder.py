@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')  # Set non-interactive backend for headless environments
 import matplotlib.pyplot as plt
 import networkx as nx
 
